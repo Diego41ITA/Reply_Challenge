@@ -10,6 +10,8 @@ __pycache__/
 
 # VSCode
 .vscode/
+.vscode/*
+
 
 # Environment
 .env
@@ -43,6 +45,3 @@ dist/
 
 # Ignore node_modules if present
 node_modules/
-
-# vscode settings
-.vscode/
