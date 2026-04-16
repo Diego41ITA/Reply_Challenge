@@ -1,3 +1,6 @@
 fastapi
-pandas
 uvicorn
+pandas
+requests
+python-dotenv
+geopy

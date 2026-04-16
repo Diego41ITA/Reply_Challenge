@@ -1,10 +1,18 @@
 def is_suspicious_link(text):
+    pass
 def fuzzy_domain_match(domain, official_domains, threshold=0.8):
+    # Dummy implementation to fix IndentationError
+    return False
 def is_urgent(text):
+    pass
 def spoofed_sender(sender):
+    pass
 def sender_name_domain_mismatch(mail):
+    pass
 def suspicious_attachment(mail):
+    pass
 def reply_to_mismatch(mail):
+    pass
 
 from fastapi import FastAPI
 import json
