@@ -4,3 +4,7 @@ pandas
 requests
 python-dotenv
 geopy
+langchain 
+langchain-openai 
+langfuse
+ulid-py
