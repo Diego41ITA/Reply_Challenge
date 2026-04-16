@@ -17,20 +17,18 @@ def health():
 @app.post("/detect")
 def detect(payload: dict):
 
+    # 1. Create session ID (used for grouping in Langfuse)
     session_id = generate_session_id()
 
-    # IMPORTANT: grouping per challenge
-    langfuse_client.update_current_trace(
-        session_id=session_id
-    )
-
+    # 2. Run graph (Langfuse tracking happens inside nodes via CallbackHandler)
     result = graph.invoke({
         "transactions": payload.get("transactions", []),
         "users": payload.get("users", []),
         "locations": payload.get("locations", []),
-        "messages": payload.get("messages", [])
+        "messages": payload.get("messages", {})
     })
 
+    # 3. Flush Langfuse traces (IMPORTANT)
     langfuse_client.flush()
 
     return {

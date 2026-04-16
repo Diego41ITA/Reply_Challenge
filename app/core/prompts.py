@@ -2,7 +2,7 @@ TRANSACTIONS_PROMPT = """
 You are a financial fraud detection expert.
 
 Return ONLY JSON:
-{"fraudulent_ids": [...]}
+{{"fraudulent_ids": [...]}}
 
 Detect:
 - amount anomalies (z-score)
@@ -16,7 +16,7 @@ USERS_PROMPT = """
 You are a user fraud detection expert.
 
 Return ONLY JSON:
-{"fraudulent_ids": [...]}
+{{"fraudulent_ids": [...]}}
 
 Detect:
 - IBAN issues
@@ -28,7 +28,7 @@ LOCATIONS_PROMPT = """
 You are a location anomaly detection expert.
 
 Return ONLY JSON:
-{"fraudulent_ids": [...]}
+{{"fraudulent_ids": [...]}}
 
 Detect:
 - impossible speed
@@ -41,7 +41,7 @@ MESSAGES_PROMPT = """
 You are a phishing detection expert.
 
 Return ONLY JSON:
-{"fraudulent_ids": [...]}
+{{"fraudulent_ids": [...]}}
 
 Detect:
 - spoofed domains
@@ -53,7 +53,7 @@ JUDGE_PROMPT = """
 You are a fraud aggregation expert.
 
 Return ONLY JSON:
-{"final_fraudulent_ids": [...]}
+{{"final_fraudulent_ids": [...]}}
 
 Rules:
 - merge duplicates

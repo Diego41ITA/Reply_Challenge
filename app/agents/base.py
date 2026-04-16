@@ -1,3 +1,5 @@
+# app/base_agent.py
+
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from app.core.llm import get_llm
@@ -10,4 +12,5 @@ def build_agent(system_prompt: str):
         ("user", "{input}")
     ])
 
+    # safe chain
     return prompt | llm | JsonOutputParser()
