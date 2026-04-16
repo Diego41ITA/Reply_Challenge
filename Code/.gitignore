@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# VSCode
+.vscode/
+
+# Environment
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Caches
+.cache/
+*.cache/
+.cache
+*.cache
+
+# Other
+*.log
+*.sqlite3
+*.db
+
+# Ignore output
+/output/
+
+# Ignore test results
+*.pytest_cache/
+
+# Ignore build
+build/
+dist/
+*.egg-info/
+
+# Ignore node_modules if present
+node_modules/
