@@ -1,6 +1,6 @@
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
-from Code.core.llm import get_llm
+from app.core.llm import get_llm
 
 def build_agent(system_prompt: str):
     llm = get_llm()
