@@ -10,7 +10,9 @@ from dotenv import load_dotenv
 
 app = FastAPI()
 
-DATA_PATH = Path("../../data/The_Truman_Show_train/locations.json")
+import os
+DATA_PATH = Path(__file__).parent.parent.parent / "data" / "The_Truman_Show_train" / "locations.json"
+print(f"[INFO] DATA_PATH resolved to: {DATA_PATH}")
 
 # Load environment variables from .env file
 load_dotenv()
@@ -59,5 +61,19 @@ def detect():
     response.raise_for_status()
     result = response.json()
     ai_content = result["choices"][0]["message"]["content"]
-    ai_json = json.loads(ai_content)
-    return ai_json
+    import re
+    ai_content = ai_content.strip()
+    if ai_content.startswith("```json"):
+        ai_content = re.sub(r"^```json\\n?", "", ai_content)
+    if ai_content.endswith("```"):
+        ai_content = re.sub(r"```$", "", ai_content)
+    ai_content = ai_content.strip()
+    if not ai_content:
+        print(f"AI response content is empty. Full response: {result}")
+        return {"error": "AI response content is empty", "response": result}
+    try:
+        ai_json = json.loads(ai_content)
+        return ai_json
+    except json.JSONDecodeError as e:
+        print(f"Failed to decode AI response content: {ai_content}")
+        return {"error": "Invalid AI response content", "content": ai_content}

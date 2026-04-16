@@ -16,7 +16,9 @@ AGENT_ENDPOINTS = {
 }
 
 
-OUTPUT_PATH = Path("../output/suspected_frauds.txt")
+import os
+OUTPUT_PATH = Path(__file__).parent.parent / "output" / "suspected_frauds.txt"
+print(f"[INFO] OUTPUT_PATH resolved to: {OUTPUT_PATH}")
 
 
 # Load environment variables from .env file

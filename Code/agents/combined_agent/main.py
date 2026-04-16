@@ -11,7 +11,9 @@ from dotenv import load_dotenv
 
 app = FastAPI()
 
-DATA_DIR = Path("../../data/The_Truman_Show_train")
+import os
+DATA_DIR = Path(__file__).parent.parent.parent / "data" / "The_Truman_Show_train"
+print(f"[INFO] DATA_DIR resolved to: {DATA_DIR}")
 
 @app.get("/health")
 def health():
@@ -78,9 +80,19 @@ def detect():
     response = requests.post(AZURE_OPENAI_ENDPOINT, headers=headers, json=payload, timeout=120)
     response.raise_for_status()
     result = response.json()
-    ai_content = result["choices"][0]["message"]["content"]
+    import re
+    ai_content = result["choices"][0]["message"].get("content", "").strip()
+    if ai_content.startswith("```json"):
+        ai_content = re.sub(r"^```json\\n?", "", ai_content)
+    if ai_content.endswith("```"):
+        ai_content = re.sub(r"```$", "", ai_content)
+    ai_content = ai_content.strip()
+    if not ai_content:
+        print(f"AI response content is empty. Full response: {result}")
+        return {"error": "AI response content is empty", "response": result}
     try:
         ai_json = json.loads(ai_content)
-        return {"fraudulent": ai_json.get("fraudulent", {})}
+        return ai_json
     except Exception:
-        return {"fraudulent": {}}
+        print(f"Failed to decode AI response content: {ai_content}")
+        return {"error": "Invalid AI response content", "content": ai_content}

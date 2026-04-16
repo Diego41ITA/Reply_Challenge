@@ -75,9 +75,34 @@ def detect():
         "api-key": AZURE_OPENAI_API_KEY,
         "Content-Type": "application/json"
     }
-    response = requests.post(AZURE_OPENAI_ENDPOINT, headers=headers, json=payload, timeout=60)
-    response.raise_for_status()
-    result = response.json()
-    ai_content = result["choices"][0]["message"]["content"]
-    ai_json = json.loads(ai_content)
-    return ai_json
+    try:
+        response = requests.post(AZURE_OPENAI_ENDPOINT, headers=headers, json=payload, timeout=60)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Azure OpenAI API request failed: {e}\nResponse: {getattr(e.response, 'text', None)}")
+        return {"error": f"Azure OpenAI API request failed: {str(e)}"}
+
+    try:
+        result = response.json()
+    except Exception as e:
+        print(f"Failed to parse JSON from Azure OpenAI response: {response.text}")
+        return {"error": "Failed to parse JSON from Azure OpenAI response", "response": response.text}
+
+    import re
+    ai_content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+    # Remove Markdown code block markers if present
+    ai_content = ai_content.strip()
+    if ai_content.startswith("```json"):
+        ai_content = re.sub(r"^```json\\n?", "", ai_content)
+    if ai_content.endswith("```"):
+        ai_content = re.sub(r"```$", "", ai_content)
+    ai_content = ai_content.strip()
+    if not ai_content:
+        print(f"AI response content is empty. Full response: {result}")
+        return {"error": "AI response content is empty", "response": result}
+    try:
+        ai_json = json.loads(ai_content)
+        return ai_json
+    except json.JSONDecodeError as e:
+        print(f"Failed to decode AI response content: {ai_content}")
+        return {"error": "Invalid AI response content", "content": ai_content}
