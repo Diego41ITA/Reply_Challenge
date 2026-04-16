@@ -1,5 +1,4 @@
-
-
+import re
 from fastapi import FastAPI
 import pandas as pd
 from pathlib import Path
@@ -60,20 +59,19 @@ def detect():
     response = requests.post(AZURE_OPENAI_ENDPOINT, headers=headers, json=payload, timeout=60)
     response.raise_for_status()
     result = response.json()
-    ai_content = result["choices"][0]["message"]["content"]
-    import re
-    ai_content = ai_content.strip()
-    if ai_content.startswith("```json"):
-        ai_content = re.sub(r"^```json\\n?", "", ai_content)
-    if ai_content.endswith("```"):
-        ai_content = re.sub(r"```$", "", ai_content)
-    ai_content = ai_content.strip()
-    if not ai_content:
-        print(f"AI response content is empty. Full response: {result}")
-        return {"error": "AI response content is empty", "response": result}
+
+    ai_content = result["choices"][0]["message"].get("content", "").strip()
+    print(f"Raw AI response content: {ai_content}")
+
+    # Remove markdown code block if present
+    cleaned = re.sub(r"```json|```", "", ai_content).strip()
+
     try:
-        ai_json = json.loads(ai_content)
-        return ai_json
-    except json.JSONDecodeError as e:
-        print(f"Failed to decode AI response content: {ai_content}")
-        return {"error": "Invalid AI response content", "content": ai_content}
+        ai_json = json.loads(cleaned)
+    except json.JSONDecodeError:
+        ai_json = {}
+    # Return only fraudulent object
+    if isinstance(ai_json, dict) and "fraudulent_ids" in ai_json:
+        return ai_json["fraudulent_ids"]
+
+    return ai_json

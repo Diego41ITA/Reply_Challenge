@@ -1,5 +1,3 @@
-
-
 from fastapi import FastAPI
 import json
 from pathlib import Path
@@ -7,6 +5,7 @@ import pandas as pd
 import requests
 import os
 from dotenv import load_dotenv
+import re
 
 app = FastAPI()
 
@@ -40,7 +39,7 @@ def detect():
         "4. High travel frequency: flag if description mentions frequent travel.\n"
         "5. High phishing susceptibility: flag if description mentions high phishing risk.\n"
         "6. Missing critical fields: flag if any of first_name, last_name, birth_year, salary, job, iban, or residence is missing or empty.\n"
-        "Return ONLY a JSON object with a key 'fraudulent_ids' containing a list of user indices (e.g., user_0, user_1) you consider fraudulent based on these features."
+        "Return ONLY a JSON object with a key 'fraudulent_ids' containing a list of user indices (e.g., user_0, user_1) you consider fraudulent based on these features. DO NOT return any reasons, explanations, or extra text. Only the JSON object."
     )
     user_content = json.dumps(users)
     payload = {
@@ -57,19 +56,16 @@ def detect():
     response.raise_for_status()
     result = response.json()
     ai_content = result["choices"][0]["message"]["content"]
-    import re
-    ai_content = ai_content.strip()
-    if ai_content.startswith("```json"):
-        ai_content = re.sub(r"^```json\\n?", "", ai_content)
-    if ai_content.endswith("```"):
-        ai_content = re.sub(r"```$", "", ai_content)
-    ai_content = ai_content.strip()
-    if not ai_content:
-        print(f"AI response content is empty. Full response: {result}")
-        return {"error": "AI response content is empty", "response": result}
+    print(f"Raw AI response content: {ai_content}")
+    # Remove markdown code block if present
+    cleaned = re.sub(r"```json|```", "", ai_content).strip()
+
     try:
-        ai_json = json.loads(ai_content)
-        return ai_json
-    except json.JSONDecodeError as e:
-        print(f"Failed to decode AI response content: {ai_content}")
-        return {"error": "Invalid AI response content", "content": ai_content}
+        ai_json = json.loads(cleaned)
+    except json.JSONDecodeError:
+        ai_json = {}
+    # Return only fraudulent object
+    if isinstance(ai_json, dict) and "fraudulent_ids" in ai_json:
+        return ai_json["fraudulent_ids"]
+
+    return ai_json

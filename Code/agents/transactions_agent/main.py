@@ -1,5 +1,3 @@
-
-
 from fastapi import FastAPI
 import pandas as pd
 from pathlib import Path
@@ -7,6 +5,7 @@ import requests
 import json
 import os
 from dotenv import load_dotenv
+import re
 
 app = FastAPI()
 
@@ -44,7 +43,7 @@ def detect():
         "6. Missing or malformed critical fields: flag if any of transaction_id, sender_id, recipient_id, amount, or timestamp is missing or malformed.\n"
         "7. Sudden large drop in balance: flag if the amount is more than 50% of the previous balance.\n"
         "8. Unusual payment method: flag if the sender uses a payment method different from their usual method.\n"
-        "Return ONLY a JSON object with a key 'fraudulent_ids' containing a list of transaction_ids that you consider fraudulent based on these features."
+        "Return ONLY a JSON object with a key 'fraudulent_ids' containing a list of transaction_ids that you consider fraudulent based on these features. DO NOT return any reasons, explanations, or extra text. Only the JSON object."
     )
     user_content = json.dumps(transactions_data)
     payload = {
@@ -62,41 +61,16 @@ def detect():
     result = response.json()
     # Extract the model's reply
     ai_content = result["choices"][0]["message"]["content"]
-    # Try to parse as JSON
-    import re
-    ai_content = ai_content.strip()
-    if ai_content.startswith("```json"):
-        ai_content = re.sub(r"^```json\\n?", "", ai_content)
-    if ai_content.endswith("```"):
-        ai_content = re.sub(r"```$", "", ai_content)
-    ai_content = ai_content.strip()
-    if not ai_content:
-        print(f"AI response content is empty. Full response: {result}")
-        return {"error": "AI response content is empty", "response": result}
+    print(f"Raw AI response content: {ai_content}")
+    # Remove markdown code block if present
+    cleaned = re.sub(r"```json|```", "", ai_content).strip()
+
     try:
-        ai_json = json.loads(ai_content)
-        return ai_json
-    except json.JSONDecodeError as e:
-        print(f"Failed to decode AI response content: {ai_content}")
-        return {"error": "Invalid AI response content", "content": ai_content}
+        ai_json = json.loads(cleaned)
+    except json.JSONDecodeError:
+        ai_json = {}
+    # Return only fraudulent object
+    if isinstance(ai_json, dict) and "fraudulent_ids" in ai_json:
+        return ai_json["fraudulent_ids"]
 
-    # 6. Missing or malformed critical fields
-    critical_fields = ["transaction_id", "sender_id", "recipient_id", "amount", "timestamp"]
-    missing_ids = df[df[critical_fields].isnull().any(axis=1)]["transaction_id"]
-    fraud_ids.update(missing_ids)
-
-    # 7. Sudden large drop in balance after transaction (drop > 50% of previous balance)
-    if {"balance_after", "amount"}.issubset(df.columns):
-        df["prev_balance"] = df["balance_after"] + df["amount"]
-        df["drop_ratio"] = (df["amount"] / df["prev_balance"]).fillna(0)
-        large_drop_ids = df[df["drop_ratio"] > 0.5]["transaction_id"]
-        fraud_ids.update(large_drop_ids)
-
-    # 8. Unusual payment method for sender (if sender usually uses a different method)
-    if {"sender_id", "payment_method"}.issubset(df.columns):
-        method_mode = df.groupby("sender_id")["payment_method"].agg(lambda x: x.mode().iloc[0] if not x.mode().empty else None)
-        df["usual_method"] = df["sender_id"].map(method_mode)
-        unusual_method_ids = df[(df["payment_method"].notnull()) & (df["payment_method"] != df["usual_method"])]
-        fraud_ids.update(unusual_method_ids["transaction_id"])
-
-    return {"fraudulent_ids": list(fraud_ids)}
+    return ai_json

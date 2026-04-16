@@ -1,3 +1,5 @@
+import re
+
 def is_suspicious_link(text):
     pass
 def fuzzy_domain_match(domain, official_domains, threshold=0.8):
@@ -60,7 +62,7 @@ def detect():
         "8. Suspicious HTML: flag if the message contains hidden links or obfuscated text.\n"
         "9. Repeated/mass message: flag if the same message is sent multiple times.\n"
         "10. Payment or sensitive info request: flag if the message requests sensitive information.\n"
-        "Return ONLY a JSON object with a key 'fraudulent_ids' containing a list of indices (e.g., mail_0, sms_0) you consider fraudulent based on these features."
+        "Return ONLY a JSON object with a key 'fraudulent_ids' containing a list of indices (e.g., mail_0, sms_0) you consider fraudulent based on these features. DO NOT return any reasons, explanations, or extra text. Only the JSON object."
     )
     # Prepare data for AI
     data = {"mails": mails, "sms": sms_list}
@@ -88,21 +90,24 @@ def detect():
         print(f"Failed to parse JSON from Azure OpenAI response: {response.text}")
         return {"error": "Failed to parse JSON from Azure OpenAI response", "response": response.text}
 
-    import re
     ai_content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
-    # Remove Markdown code block markers if present
+    print(f"Raw AI response content: {ai_content}")
     ai_content = ai_content.strip()
     if ai_content.startswith("```json"):
         ai_content = re.sub(r"^```json\\n?", "", ai_content)
     if ai_content.endswith("```"):
         ai_content = re.sub(r"```$", "", ai_content)
     ai_content = ai_content.strip()
-    if not ai_content:
-        print(f"AI response content is empty. Full response: {result}")
-        return {"error": "AI response content is empty", "response": result}
+    print(f"Raw AI response content: {ai_content}")
+    # Remove markdown code block if present
+    cleaned = re.sub(r"```json|```", "", ai_content).strip()
+
     try:
-        ai_json = json.loads(ai_content)
-        return ai_json
-    except json.JSONDecodeError as e:
-        print(f"Failed to decode AI response content: {ai_content}")
-        return {"error": "Invalid AI response content", "content": ai_content}
+        ai_json = json.loads(cleaned)
+    except json.JSONDecodeError:
+        ai_json = {}
+    # Return only fraudulent object
+    if isinstance(ai_json, dict) and "fraudulent_ids" in ai_json:
+        return ai_json["fraudulent_ids"]
+
+    return ai_json

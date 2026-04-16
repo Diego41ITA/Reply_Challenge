@@ -1,9 +1,9 @@
-
 from fastapi import FastAPI
 from pathlib import Path
 import pandas as pd
 import json
 from collections import defaultdict
+import re
 
 import requests
 import os
@@ -61,7 +61,7 @@ def detect():
         "You are a holistic fraud detection expert. For each user, you are given their profile, transactions, locations, mails, and sms. "
         "For each user, analyze all available data and return a list of fraud labels for that user. "
         "Consider transaction outliers, rapid repeats, new recipients, location anomalies, phishing in mails/sms, and user profile risks. "
-        "Return ONLY a JSON object with a key 'fraudulent' mapping user indices to a list of fraud labels (e.g., {\"0\": [\"tx_123_amount_outlier\", ...]})."
+        "Return ONLY a JSON object with a key 'fraudulent' mapping user indices to a list of fraud labels (e.g., {\"0\": [\"tx_123_amount_outlier\", ...]}). DO NOT return any reasons, explanations, or extra text. Only the JSON object."
     )
     payload = {
         "messages": [
@@ -80,19 +80,18 @@ def detect():
     response = requests.post(AZURE_OPENAI_ENDPOINT, headers=headers, json=payload, timeout=120)
     response.raise_for_status()
     result = response.json()
-    import re
+    
     ai_content = result["choices"][0]["message"].get("content", "").strip()
-    if ai_content.startswith("```json"):
-        ai_content = re.sub(r"^```json\\n?", "", ai_content)
-    if ai_content.endswith("```"):
-        ai_content = re.sub(r"```$", "", ai_content)
-    ai_content = ai_content.strip()
-    if not ai_content:
-        print(f"AI response content is empty. Full response: {result}")
-        return {"error": "AI response content is empty", "response": result}
+    print(f"Raw AI response content: {ai_content}")
+    # Remove markdown code block if present
+    cleaned = re.sub(r"```json|```", "", ai_content).strip()
+
     try:
-        ai_json = json.loads(ai_content)
-        return ai_json
-    except Exception:
-        print(f"Failed to decode AI response content: {ai_content}")
-        return {"error": "Invalid AI response content", "content": ai_content}
+        ai_json = json.loads(cleaned)
+    except json.JSONDecodeError:
+        ai_json = {}
+    # Return only fraudulent object
+    if isinstance(ai_json, dict) and "fraudulent" in ai_json:
+        return ai_json["fraudulent"]
+
+    return ai_json
